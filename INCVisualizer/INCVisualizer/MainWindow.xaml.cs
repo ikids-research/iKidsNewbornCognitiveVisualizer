@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -28,7 +29,7 @@ namespace INCVisualizer
         public string currentFilename;
         public List<string> states;
         public Func<double, string> YFormatter { get; set; }
-
+        public double[,] rawData;
         public MainWindow()
         {
             InitializeComponent();
@@ -45,6 +46,34 @@ namespace INCVisualizer
             YFormatter = value => (int)value==-2?"Disagree":(int)value==-1?"Agree":((int)value) == 0 || ((int)value) == 1 || ((int)value) == 2 || ((int)value) == 3?states[(int)value%states.Count]:"";
 
             addDummyData();
+        }
+
+        // Use the DataObject.Pasting Handler 
+        private void TextBoxPasting(object sender, DataObjectPastingEventArgs e)
+        {
+            if (e.DataObject.GetDataPresent(typeof(String)))
+            {
+                String text = (String)e.DataObject.GetData(typeof(String));
+                if (!IsTextAllowed(text))
+                {
+                    e.CancelCommand();
+                }
+            }
+            else
+            {
+                e.CancelCommand();
+            }
+        }
+
+        private static bool IsTextAllowed(string text)
+        {
+            Regex regex = new Regex("[^0-9.-]+"); //regex that matches disallowed text
+            return !regex.IsMatch(text);
+        }
+
+        private void filterSize_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = !IsTextAllowed(e.Text);
         }
 
         private void addDummyData()
@@ -140,9 +169,38 @@ namespace INCVisualizer
             string[] dummyLabels = new string[] { "", "Human", "Computer" };
             setData(dummyLabels, data);
         }
+        private Tuple<double[,], int> filterData(double[,] data, double length, bool[] channels)
+        {
+            if (length <= 0) return new Tuple<double[,],int>(data,0);
+            double hold = (length - 1) / length;
+            double next = 1 / length;
+            int changeCount = 0;
+            for (int channel = 0; channel < data.GetLength(0); channel++) {
+                if (!channels[channel]) continue;
+                double mva = data[channel, 0];
+                for (int i = 0; i < data.GetLength(1); i++)
+                {
+                    double val = data[channel, i];
+                    mva = (mva * hold) + (val * next);
+                    double newPoint = Math.Round(mva);
+                    if (data[channel, i] != newPoint)
+                        changeCount++;
+                    data[channel, i] = newPoint;
+                }
+            }
 
+            return new Tuple<double[,], int>(data, changeCount);
+        }
         private void setData(string[] labels, double[,] data)
         {
+            double filterLength = 1;
+            try
+            {
+                filterLength = double.Parse(filterSize.Text); }
+            catch (Exception) { }
+            Tuple<double[,], int> filterResult = filterData(data, filterLength, new bool[] { false, false, true });
+            data = filterResult.Item1;
+            filterChange.Header = "Filtered Points: " + filterResult.Item2;
             StepLineSeries[] series = new StepLineSeries[labels.Length - 1];
             for(int i = 1; i < labels.Length; i++)
             {
@@ -168,9 +226,12 @@ namespace INCVisualizer
 
             ChartValues<ObservablePoint> vd = new ChartValues<ObservablePoint>();
             double prevd = -1;
+            int agreeCount = 0;
             for (int i = 0; i < data.GetLength(1); i++) {
                 double point = data[1, i] == data[2, i] ? -1 : -2;
-                if(point!=prevd)
+                if (data[1, i] == data[2, i])
+                    agreeCount++;
+                if (point != prevd)
                     vd.Add(new ObservablePoint(data[0, i], point));
                 prevd = point;
             }
@@ -182,6 +243,8 @@ namespace INCVisualizer
                 DataLabels = false
             };
             mainChart.Series.Add(diff);
+
+            agreementPercent.Header = "Agreement: " + ((double)agreeCount / (double)data.GetLength(1)).ToString("#.###");
         }
 
         private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -197,18 +260,32 @@ namespace INCVisualizer
             diag.Multiselect = false;
             diag.CheckFileExists = true;
             diag.CheckPathExists = true;
-            diag.ShowDialog();
-
+            bool? result = diag.ShowDialog();
+            if (result == null || result == false) return;
             currentFilename = diag.FileName;
 
             double[,] data = loadDataFromFile(currentFilename);
-            if (data == null) return;
-            else setData(data);
+            if (data == null)
+            {
+                currentFilename = null;
+                return;
+            }
+            else
+            {
+                rawData = data;
+                setData(data);
+            }
         }
 
         private void MenuItem_Click_1(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (currentFilename == null) return;
+            setData(rawData);
         }
     }
 }

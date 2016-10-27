@@ -14,6 +14,11 @@
                 <Separator/>
                 <MenuItem Header="Exit" ToolTip="Exits the program." Click="MenuItem_Click_1"/>
             </MenuItem>
+            <Button Content="Refresh Current Data" Click="Button_Click"/>
+            <MenuItem Header="Prefilter Size:"/>
+            <TextBox Text="1" Width="50" Name="filterSize" PreviewTextInput="filterSize_PreviewTextInput" DataObject.Pasting="TextBoxPasting"/>
+            <MenuItem Header="Filtered Points: " Name="filterChange"/>
+            <MenuItem Header="Agreement: " Name="agreementPercent"/>
         </Menu>
         <lvc:CartesianChart Series="{Binding SeriesCollection}" LegendLocation="Bottom" Margin="10,31,10,10" Name="mainChart" Zoom="X">
             <lvc:CartesianChart.AxisY>
