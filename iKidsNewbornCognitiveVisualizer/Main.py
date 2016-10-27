@@ -3,35 +3,49 @@ import plotly.graph_objs as go
 from plotly import tools
 import numpy as np
 
+# Initialize notebook
 offline.init_notebook_mode()
 
+# Open file and set configuration parameters
 f = open('497_output_xlsx.txt', 'rb')
-
 moving_average_window_size = 100
 
+# Remove the first line (header)
 f.readline()
+
+# Create data arrays
 x_human = []
 x_computer = []
 x_agreement = []
 y_human = []
 y_computer = []
 y_agreement = []
+x_phase = []
+y_phase = []
+agree_list = []
+x_agree_running_proportion = []
+y_agree_running_proportion = []
+
+# Parse first line
 first_line = f.readline()
 split_line = first_line.split(' ')
 val_human = split_line[2].strip()
 val_computer = split_line[3].strip()
 val_agreement = val_human == val_computer
+phase = int(split_line[0].split('_')[0])
 x_val = float(split_line[1].strip())
+
+# Append first values to data arrays
 x_human.append(x_val)
 y_human.append(val_human)
 x_computer.append(x_val)
 y_computer.append(val_computer)
 x_agreement.append(x_val)
 y_agreement.append(val_agreement)
-
-phase = int(split_line[0].split('_')[0])
 x_phase.append(x_val)
 y_phase.append(phase)
+
+# Iterate through remainder of the file
 for line in f:
     split_line = line.split(' ')
     val_human = split_line[2].strip()
@@ -57,6 +71,7 @@ for line in f:
         x_phase.append(x_val)
         y_phase.append(phase)
 
+# Create human plot line
 trace_human = go.Scatter(
     x=x_human,
     y=y_human,
@@ -68,6 +83,7 @@ trace_human = go.Scatter(
     )
 )
 
+# Create computer plot line
 trace_computer = go.Scatter(
     x=x_computer,
     y=y_computer,
@@ -79,6 +95,7 @@ trace_computer = go.Scatter(
     )
 )
 
+# Create agreement plot line
 trace_agreement = go.Scatter(
     x=x_agreement,
     y=y_agreement,
@@ -92,6 +109,7 @@ trace_agreement = go.Scatter(
     fill='tozeroy'
 )
 
+# Create phase plot line
 trace_phase = go.Scatter(
     x=x_phase,
     y=y_phase,
@@ -104,6 +122,7 @@ trace_phase = go.Scatter(
     yaxis='y3'
 )
 
+# Create moving average accuracy plot line
 trace_running_accuracy = go.Scatter(
     x=x_agree_running_proportion,
     y=y_agree_running_proportion,
@@ -116,19 +135,22 @@ trace_running_accuracy = go.Scatter(
     yaxis='y4'
 )
 
+# Generate subplots
 fig = tools.make_subplots(rows=4, cols=1, shared_xaxes=True)
 
+# Configure title and axis formats
 fig['layout'].update(title='iKids Newborn Cognitive Visualization')
 fig['layout']['yaxis1'].update(title='Raw Data', type="category")
 fig['layout']['yaxis2'].update(title='Agreement', type="category")
 fig['layout']['yaxis3'].update(title='Phase', type="category")
 fig['layout']['yaxis4'].update(title='Accuracy')
 
-
+# Add traces
 fig.append_trace(trace_human, 1, 1)
 fig.append_trace(trace_computer, 1, 1)
 fig.append_trace(trace_agreement, 2, 1)
 fig.append_trace(trace_phase, 3, 1)
 fig.append_trace(trace_running_accuracy, 4, 1)
 
+# Render plot
 offline.plot(fig)
