@@ -1,8 +1,8 @@
 #Easy Setup (Windows Only)
 
 1. Run Setup.bat
-2. Unzip iKidsNewbornCognitiveVisualizerData.zip
-3. Run Run.bat (two windows should open in your default browser)
+2. Unzip iKidsNewbornCognitiveVisualizerData.zip (or have log files you wish to visualize in a known location)
+3. Run Run.bat (and select a log file)
 
 #Setup
 
@@ -15,5 +15,3 @@ To use this program, the following software should be installed. This has only b
 
 3. (optional) Install PyCharm Community Edition from https://www.jetbrains.com/pycharm/download/
 4. Download this repo as zip (https://github.com/kevroy314/iKidsNewbornCognitiveVisualizer/archive/master.zip) and unzip in a known location or call git clone
-
-Further instructions will come in future commits.
