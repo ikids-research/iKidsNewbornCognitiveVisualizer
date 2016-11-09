@@ -27,19 +27,21 @@ parser.add_argument("-i", help="Any log file produced by Unity or a csv from ori
                     "automatically detected. Note: Only required files being missing will halt execution.", default='',
                     dest='i')
 parser.add_argument("-moving_avg_size", help="The size of the moving average window for visualization " +
-                    "(default=100 points)", default=100, dest='avg_size')
-parser.add_argument("-auto_open", help="Automatically open the output file.", default="true", dest="auto_open")
+                    "(default=100 points)", default=100, dest='avg_size', type=int)
+parser.add_argument("-auto_open", help="Automatically open the output file.", default="true", dest="auto_open",
+                    choices=['true', 'false'])
 parser.add_argument("-minimum_latency", help="The minimum latency of update to allow for accuracy measurement " +
-                                             "(default 0.1s).", default=0.1, dest="min_latency")
+                                             "(default 0.1s).", default=0.1, dest="min_latency", type=float)
 parser.add_argument("-latency_mode", help="Latency mode can be all, first, or second - meaning if latency " +
                     "exceeds -minimum_latency (default 0.1s), either both points surrounding the interval are ignored "
                     "(all), the first point around the interval is ignored (first), or the second point around the "
-                    "interval is ignored (second). (default=all)", default="all", dest="latency_mode")
+                    "interval is ignored (second). (default=all)", default="all", dest="latency_mode",
+                    choices=['all', 'first', 'second'])
 args = parser.parse_args()
 
 auto_open = False
 # Get auto_open parameter
-if args.auto_open.lower() == "true" or args.auto_open == "1":
+if args.auto_open.lower() == "true":
     auto_open = True
 
 # Get the path from the argument or a dialog if no argument is provided
@@ -82,12 +84,22 @@ participant_id = None
 data = None
 # Get the data from the parser and set the participant_id based on the input type
 if mode == 'xlsx':
+    if args.min_latency <= 0.1:
+        logging.warning('For xlsx formats, it is typically better to have a >0.1s latency as frames will almost ' +
+                        'always be slightly longer than that. 0.2 is suggested. Set this using the -min_latency ' +
+                        'argument.')
     participant_id = os.path.splitext(os.path.basename(path))[0]  # Participant ID is the filename
     # Open file and set configuration parameters
-    data = parse_basic_human_computer_comparison(path, moving_average_window_size=args.avg_size)
+    data = parse_basic_human_computer_comparison(path,
+                                                 moving_average_window_size=args.avg_size,
+                                                 minimum_latency=args.min_latency,
+                                                 latency_mode=args.latency_mode)
 elif mode == 'unity':
     participant_id = unity_files['input'].split('log-')[1]  # Participant ID is date-part
-    data = parse_unity_log_files(unity_files['input'], unity_files['state'], moving_average_window_size=args.avg_size)
+    data = parse_unity_log_files(unity_files['input'], unity_files['state'],
+                                 moving_average_window_size=args.avg_size,
+                                 minimum_latency=args.min_latency,
+                                 latency_mode=args.latency_mode)
 
 if participant_id is None or data is None:
     logging.error("There was a problem in parsing. No data or participant_id found. Closing.")
@@ -137,7 +149,7 @@ trace_agreement = go.Scatter(
 # Create agreement plot line
 trace_agreement_latency_mask = go.Scatter(
     x=data.x_agreement,
-    y=data.agreement_latency_mask,
+    y=[not x for x in data.agreement_latency_mask],
     mode='lines',
     name="Agreement Latency Mask",
     hoverinfo="none",
@@ -161,28 +173,80 @@ trace_phase = go.Scatter(
     yaxis='y3'
 )
 
+# Create phase plot line
+trace_abstract_phase = go.Scatter(
+    x=data.x_phase,
+    y=data.abstract_phases,
+    mode='lines',
+    name="Abstract Phase",
+    hoverinfo="none",
+    line=dict(
+        shape='hv'
+    ),
+    yaxis='y4'
+)
+
 # Create moving average accuracy plot line
 trace_running_accuracy = go.Scatter(
     x=data.x_agree_running_proportion,
     y=data.y_agree_running_proportion,
     mode='lines',
-    name="Agreement % ({0} sample moving average)".format(data.moving_average_window_size),
+    name="Agreement % ({0} S MA)".format(data.moving_average_window_size),
     hoverinfo="y",
     line=dict(
         shape='linear'
     ),
-    yaxis='y4'
+    yaxis='y5'
+)
+
+# Create moving average accuracy plot line
+trace_latency = go.Scatter(
+    x=data.x_agreement,
+    y=data.latency_list,
+    mode='lines',
+    name="Latency (s)",
+    hoverinfo="y",
+    line=dict(
+        shape='hv'
+    ),
+    yaxis='y6'
+)
+
+# Create moving average accuracy plot line
+trace_latency_threshold = go.Scatter(
+    x=[data.x_agreement[0], data.x_agreement[-1]],
+    y=[args.min_latency, args.min_latency],
+    mode='lines',
+    name="Latency Mask Threshold ({0} s)".format(args.min_latency),
+    hoverinfo="y",
+    line=dict(
+        shape='linear'
+    ),
+    yaxis='y6'
 )
 
 # Generate subplots
-fig = tools.make_subplots(rows=4, cols=1, shared_xaxes=True)
+fig = tools.make_subplots(rows=6, cols=1, shared_xaxes=True, print_grid=False)
 
+precision = '5'
+title = ("iKids Newborn Cognitive - (Agreements: Time-Wise={0:." + precision +
+         "f}, Sample-Wise={1:." + precision + "f}, Exclusion Ratio={2:." + precision + "f})").format(
+        data.time_wise_agreement,
+        data.sample_wise_agreement,
+        float(data.agreement_latency_mask.count(False))/float(len(data.agreement_latency_mask)))
+
+logging.info(title)
+logging.info("Exclusion Details: False={0}, True={1}".format(float(data.agreement_latency_mask.count(False)),
+                                                             float(data.agreement_latency_mask.count(True))))
 # Configure title and axis formats
-fig['layout'].update(title='iKids Newborn Cognitive Visualization')
+fig['layout'].update(title=title)
 fig['layout']['yaxis1'].update(title='Raw Data', type="category")
 fig['layout']['yaxis2'].update(title='Agreement', type="category", categoryorder='array', categoryarray=[False, True])
 fig['layout']['yaxis3'].update(title='Phase', type="category")
-fig['layout']['yaxis4'].update(title='Accuracy')
+fig['layout']['yaxis4'].update(title='Abstract Phase', categoryorder='array', categoryarray=data.abstract_phase_keys,
+                               tickangle=-45)
+fig['layout']['yaxis5'].update(title='Accuracy')
+fig['layout']['yaxis6'].update(title='Latency', type='log')
 
 # Add traces
 fig.append_trace(trace_human, 1, 1)
@@ -190,13 +254,10 @@ fig.append_trace(trace_computer, 1, 1)
 fig.append_trace(trace_agreement, 2, 1)
 fig.append_trace(trace_agreement_latency_mask, 2, 1)
 fig.append_trace(trace_phase, 3, 1)
-fig.append_trace(trace_running_accuracy, 4, 1)
-
-print "Time-Wise: {0}, Sample-Wise: {1}, Number Excluded: {2}, Exclusion Ratio: {3}".format(
-    data.time_wise_agreement,
-    data.sample_wise_agreement,
-    data.agreement_latency_mask.count(False),
-    float(data.agreement_latency_mask.count(False))/float(len(data.agreement_latency_mask)))
+fig.append_trace(trace_abstract_phase, 4, 1)
+fig.append_trace(trace_running_accuracy, 5, 1)
+fig.append_trace(trace_latency, 6, 1)
+fig.append_trace(trace_latency_threshold, 6, 1)
 
 # Render plot
 offline.plot(fig, filename=participant_id + '.html', auto_open=auto_open)
