@@ -2,6 +2,22 @@ import numpy as np
 from collections import OrderedDict
 
 
+def list_mask_by_latency(t, latency=0.1, remove_start_point=True, remove_end_point=False):
+    # Find all remove/keep positions
+    mask_t = [True] * len(t)
+    iterator = enumerate(t)
+    next(iterator)
+    for idx, current_t in iterator:
+        prev_t = t[idx - 1]
+        if float(current_t) - float(prev_t) > latency:
+            if remove_start_point:
+                mask_t[idx - 1] = False
+            if remove_end_point:
+                mask_t[idx] = False
+
+    return mask_t
+
+
 def parse_basic_human_computer_comparison(filename, moving_average_window_size=100):
     f = open(filename, 'rb')
 
@@ -60,15 +76,38 @@ def parse_basic_human_computer_comparison(filename, moving_average_window_size=1
         if not val_agreement == y_agreement[-1]:
             x_agreement.append(x_val)
             y_agreement.append(val_agreement)
-        agree_list.append(val_agreement)
-        if len(agree_list) > moving_average_window_size:
-            agree_list.pop(0)
-        x_agree_running_proportion.append(x_val)
-        y_agree_running_proportion.append(np.average(agree_list))
         phase = int(split_line[0].split('_')[0])
         if not phase == y_phase[-1]:
             x_phase.append(x_val)
             y_phase.append(phase)
+
+    # Generate a mask on the agreement values that have a certain latency
+    agreement_latency_mask = list_mask_by_latency(x_agreement)
+
+    x_interval_sum = 0
+    sample_count = 0
+    sample_wise_agreement_sum = 0.0
+    time_wise_agreement_sum = 0
+    # Use the mask to compute the running average, sample-wise agreement percentage, and time-wise agreement percentage
+    for idx, mask_val in enumerate(agreement_latency_mask):
+        if mask_val:
+            if not (idx >= len(x_agreement) - 1):
+                delta_t = x_agreement[idx+1] - x_agreement[idx]
+                x_interval_sum += delta_t
+                time_wise_agreement_sum += y_agreement[idx] * delta_t
+            else:  # We interpolate the final point delta-t by assuming it is the average
+                delta_t = x_interval_sum / sample_count
+                time_wise_agreement_sum += y_agreement[idx] * delta_t
+                x_interval_sum += delta_t
+            sample_count += 1
+            sample_wise_agreement_sum += float(y_agreement[idx])
+            agree_list.append(y_agreement[idx])
+            if len(agree_list) > moving_average_window_size:
+                agree_list.pop(0)
+            x_agree_running_proportion.append(x_agreement[idx])
+            y_agree_running_proportion.append(np.average(agree_list))
+    sample_wise_agreement = sample_wise_agreement_sum / sample_count
+    time_wise_agreement = time_wise_agreement_sum / x_interval_sum
 
     # End Parser
 
@@ -82,10 +121,12 @@ def parse_basic_human_computer_comparison(filename, moving_average_window_size=1
     data.y_agreement = y_agreement
     data.x_phase = x_phase
     data.y_phase = y_phase
-    data.agree_list = agree_list
+    data.agreement_latency_mask = agreement_latency_mask
     data.x_agree_running_proportion = x_agree_running_proportion
     data.y_agree_running_proportion = y_agree_running_proportion
     data.moving_average_window_size = moving_average_window_size
+    data.sample_wise_agreement = sample_wise_agreement
+    data.time_wise_agreement = time_wise_agreement
 
     return data
 
@@ -206,14 +247,37 @@ def parse_unity_log_files(input_filename, state_filename, moving_average_window_
         if not val_agreement == y_agreement[-1]:
             x_agreement.append(x_val)
             y_agreement.append(val_agreement)
-        agree_list.append(val_agreement)
-        if len(agree_list) > moving_average_window_size:
-            agree_list.pop(0)
-        x_agree_running_proportion.append(x_val)
-        y_agree_running_proportion.append(np.mean(agree_list))
         if not phase == y_phase[-1]:
             x_phase.append(x_val)
             y_phase.append(phase)
+
+    # Generate a mask on the agreement values that have a certain latency
+    agreement_latency_mask = list_mask_by_latency(x_agreement)
+
+    x_interval_sum = 0
+    sample_count = 0
+    sample_wise_agreement_sum = 0.0
+    time_wise_agreement_sum = 0
+    # Use the mask to compute the running average, sample-wise agreement percentage, and time-wise agreement percentage
+    for idx, mask_val in enumerate(agreement_latency_mask):
+        if mask_val:
+            if not (idx >= len(x_agreement) - 1):
+                delta_t = x_agreement[idx + 1] - x_agreement[idx]
+                x_interval_sum += delta_t
+                time_wise_agreement_sum += y_agreement[idx] * delta_t
+            else:  # We interpolate the final point delta-t by assuming it is the average
+                delta_t = x_interval_sum / sample_count
+                time_wise_agreement_sum += y_agreement[idx] * delta_t
+                x_interval_sum += delta_t
+            sample_count += 1
+            sample_wise_agreement_sum += float(y_agreement[idx])
+            agree_list.append(y_agreement[idx])
+            if len(agree_list) > moving_average_window_size:
+                agree_list.pop(0)
+            x_agree_running_proportion.append(x_agreement[idx])
+            y_agree_running_proportion.append(np.average(agree_list))
+    sample_wise_agreement = sample_wise_agreement_sum / sample_count
+    time_wise_agreement = time_wise_agreement_sum / x_interval_sum
 
     # End Parser
 
@@ -227,9 +291,11 @@ def parse_unity_log_files(input_filename, state_filename, moving_average_window_
     data.y_agreement = y_agreement
     data.x_phase = x_phase
     data.y_phase = y_phase
-    data.agree_list = agree_list
+    data.agreement_latency_mask = agreement_latency_mask
     data.x_agree_running_proportion = x_agree_running_proportion
     data.y_agree_running_proportion = y_agree_running_proportion
     data.moving_average_window_size = moving_average_window_size
+    data.sample_wise_agreement = sample_wise_agreement
+    data.time_wise_agreement = time_wise_agreement
 
     return data

@@ -29,6 +29,12 @@ parser.add_argument("-i", help="Any log file produced by Unity or a csv from ori
 parser.add_argument("-moving_avg_size", help="The size of the moving average window for visualization " +
                     "(default=100 points)", default=100, dest='avg_size')
 parser.add_argument("-auto_open", help="Automatically open the output file.", default="true", dest="auto_open")
+parser.add_argument("-minimum_latency", help="The minimum latency of update to allow for accuracy measurement " +
+                                             "(default 0.1s).", default=0.1, dest="min_latency")
+parser.add_argument("-latency_mode", help="Latency mode can be all, first, or second - meaning if latency " +
+                    "exceeds -minimum_latency (default 0.1s), either both points surrounding the interval are ignored "
+                    "(all), the first point around the interval is ignored (first), or the second point around the "
+                    "interval is ignored (second). (default=all)", default="all", dest="latency_mode")
 args = parser.parse_args()
 
 auto_open = False
@@ -128,6 +134,20 @@ trace_agreement = go.Scatter(
     fill='tozeroy'
 )
 
+# Create agreement plot line
+trace_agreement_latency_mask = go.Scatter(
+    x=data.x_agreement,
+    y=data.agreement_latency_mask,
+    mode='lines',
+    name="Agreement Latency Mask",
+    hoverinfo="none",
+    line=dict(
+        shape='hv'
+    ),
+    yaxis='y2',
+    fill='tozeroy'
+)
+
 # Create phase plot line
 trace_phase = go.Scatter(
     x=data.x_phase,
@@ -168,8 +188,15 @@ fig['layout']['yaxis4'].update(title='Accuracy')
 fig.append_trace(trace_human, 1, 1)
 fig.append_trace(trace_computer, 1, 1)
 fig.append_trace(trace_agreement, 2, 1)
+fig.append_trace(trace_agreement_latency_mask, 2, 1)
 fig.append_trace(trace_phase, 3, 1)
 fig.append_trace(trace_running_accuracy, 4, 1)
+
+print "Time-Wise: {0}, Sample-Wise: {1}, Number Excluded: {2}, Exclusion Ratio: {3}".format(
+    data.time_wise_agreement,
+    data.sample_wise_agreement,
+    data.agreement_latency_mask.count(False),
+    float(data.agreement_latency_mask.count(False))/float(len(data.agreement_latency_mask)))
 
 # Render plot
 offline.plot(fig, filename=participant_id + '.html', auto_open=auto_open)
