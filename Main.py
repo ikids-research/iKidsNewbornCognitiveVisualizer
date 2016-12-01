@@ -1,10 +1,13 @@
-import plotly.offline as offline
-import plotly.graph_objs as go
-from plotly import tools
-from iKidsParser import parse_basic_human_computer_comparison, parse_unity_log_files
 import argparse
 import os
 import tkFileDialog
+
+import plotly.graph_objs as go
+import plotly.offline as offline
+from plotly import tools
+
+from iKidsParser import parse_basic_human_computer_comparison, parse_unity_log_files
+
 try:
     import tkinter as tk
 except ImportError:
@@ -96,7 +99,7 @@ if mode == 'xlsx':
                                                  latency_mode=args.latency_mode)
 elif mode == 'unity':
     participant_id = unity_files['input'].split('log-')[1]  # Participant ID is date-part
-    data = parse_unity_log_files(unity_files['input'], unity_files['state'],
+    data = parse_unity_log_files(unity_files['input'], unity_files['state'], unity_files['config'],
                                  moving_average_window_size=args.avg_size,
                                  minimum_latency=args.min_latency,
                                  latency_mode=args.latency_mode)

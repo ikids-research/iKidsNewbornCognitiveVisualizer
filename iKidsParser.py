@@ -1,5 +1,6 @@
-import numpy as np
 from collections import OrderedDict
+
+import numpy as np
 
 
 def list_mask_by_latency(t, latency=0.1, remove_start_point=True, remove_end_point=False):
@@ -110,7 +111,7 @@ def parse_basic_human_computer_comparison(filename,
     for idx, mask_val in enumerate(agreement_latency_mask):
         if mask_val:
             if not (idx >= len(x_agreement) - 1):
-                delta_t = x_agreement[idx+1] - x_agreement[idx]
+                delta_t = x_agreement[idx + 1] - x_agreement[idx]
                 x_interval_sum += delta_t
                 time_wise_agreement_sum += y_agreement[idx] * delta_t
             else:  # We interpolate the final point delta-t by assuming it is the average
@@ -126,8 +127,6 @@ def parse_basic_human_computer_comparison(filename,
             y_agree_running_proportion.append(np.average(agree_list))
     sample_wise_agreement = sample_wise_agreement_sum / sample_count
     time_wise_agreement = time_wise_agreement_sum / x_interval_sum
-
-    phase_key = ['']
 
     # End Parser
 
@@ -149,19 +148,49 @@ def parse_basic_human_computer_comparison(filename,
     data.time_wise_agreement = time_wise_agreement
     data.latency_list = latency_list
     data.abstract_phases = y_phase
-    data.abstract_phase_keys = phase_key
+    data.abstract_phase_keys = ['']
 
     return data
 
 
-# TODO: Config file is not used
+phase_key = ['Calibration PreT', 'Calibration', 'Habituation PreT', 'Habituation',
+             'Test PreT', 'Test']
+
+phase_numbers = [[1, 0, 4, 3, 42, 41, 45, 44],
+                 [2, 5, 43, 46],
+                 [7, 6, 10, 9, 13, 12, 16, 15, 19, 18, 22, 21, 25, 24, 28, 27, 31, 30, 48, 47, 51, 50, 54, 53, 57,
+                  56, 60, 59, 63, 62, 66, 65, 69, 68, 72, 71],
+                 [8, 11, 14, 17, 20, 23, 26, 29, 32, 49, 52, 55, 58, 61, 64, 67, 70, 73],
+                 [34, 33, 38, 37, 75, 74, 79, 78],
+                 [35, 36, 39, 40, 76, 77, 80, 81]]
+
+phase_key_numbered = ['Calibration PreT_1', 'Calibration_1', 'Habituation PreT_1', 'Habituation_1',
+                      'Test PreT_1', 'Test_1', 'Calibration PreT_2', 'Calibration_2', 'Habituation PreT_2',
+                      'Habituation_2', 'Test PreT_2', 'Test_2']
+
+phase_numbers_numbered = [[1, 0, 4, 3],
+                          [2, 5],
+                          [7, 6, 10, 9, 13, 12, 16, 15, 19, 18, 22, 21, 25, 24, 28, 27, 31, 30],
+                          [8, 11, 14, 17, 20, 23, 26, 29, 32],
+                          [34, 33, 38, 37],
+                          [35, 36, 39, 40],
+                          [42, 41, 45, 44],
+                          [43, 46],
+                          [48, 47, 51, 50, 54, 53, 57, 56, 60, 59, 63, 62, 66, 65, 69, 68, 72, 71],
+                          [49, 52, 55, 58, 61, 64, 67, 70, 73],
+                          [75, 74, 79, 78],
+                          [76, 77, 80, 81]]
+
+
 def parse_unity_log_files(input_filename,
                           state_filename,
+                          config_filename,
                           moving_average_window_size=100,
                           minimum_latency=0.1,
                           latency_mode='all'):
     fi = open(input_filename, 'rb')
     fs = open(state_filename, 'rb')
+    fc = open(config_filename, 'rb')
 
     # Create data arrays
     x_human = []
@@ -323,24 +352,29 @@ def parse_unity_log_files(input_filename,
     sample_wise_agreement = sample_wise_agreement_sum / sample_count
     time_wise_agreement = time_wise_agreement_sum / x_interval_sum
 
-    phase_key = ['Calibration PreT', 'Calibration', 'Habituation PreT', 'Habituation',
-                 'Test PreT', 'Test']
-    phase_numbers = [[1, 0, 4, 3, 42, 41, 45, 44],
-                     [2, 5, 43, 46],
-                     [7, 6, 10, 9, 13, 12, 16, 15, 19, 18, 22, 21, 25, 24, 28, 27, 31, 30, 48, 47, 51, 50, 54, 53, 57,
-                      56, 60, 59, 63, 62, 66, 65, 69, 68, 72, 71],
-                     [8, 11, 14, 17, 20, 23, 26, 29, 32, 49, 52, 55, 58, 61, 64, 67, 70, 73],
-                     [34, 33, 38, 37, 35, 36, 39, 40, 75, 74, 79, 78, 76, 77, 80, 81],
-                     [35, 36, 39, 40, 76, 77, 80, 81]]
-
     abstract_phases = [None] * len(x_phase)
+    abstract_phases_numbered = [None] * len(x_phase)
     for idx, p in enumerate(y_phase):
         abstract_phase = None
+        abstract_phase_numbered = None
         for key, numbers in zip(phase_key, phase_numbers):
             if int(p) in numbers:
                 abstract_phase = key
                 break
+        for key, numbers in zip(phase_key_numbered, phase_numbers_numbered):
+            if int(p) in numbers:
+                abstract_phase_numbered = key
+                break
         abstract_phases[idx] = abstract_phase
+        abstract_phases_numbered[idx] = abstract_phase_numbered
+
+    participant_id = ''
+    condition = ''
+    for line in fc:
+        if 'Participant ID: ' in line:
+            participant_id = line.split('Participant ID: ')[-1]
+        if 'Condition Configuration Filename: ' in line:
+            condition = line.split('Condition Configuration Filename: ')[-1]
 
     # End Parser
 
@@ -362,6 +396,9 @@ def parse_unity_log_files(input_filename,
     data.time_wise_agreement = time_wise_agreement
     data.latency_list = latency_list
     data.abstract_phases = abstract_phases
+    data.abstract_phases_numbered = abstract_phases_numbered
     data.abstract_phase_keys = phase_key
+    data.participant_id = participant_id.strip()
+    data.condition = condition.strip()
 
     return data
