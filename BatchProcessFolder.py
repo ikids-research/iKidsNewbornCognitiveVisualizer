@@ -61,16 +61,17 @@ for path in paths:
     unity_files_dict = dict()
     current_type = os.path.basename(path)[len(unity_file_key_string):].split('_')[0]  # Identify the selected file type
     for expected_type in unity_file_types:  # Search local directory for correct log files and generate list
+        validate_path = os.path.join(directory, path.replace(current_type, expected_type))
         if expected_type == current_type:
-            unity_files_dict[expected_type] = path
+            unity_files_dict[expected_type] = validate_path
             continue  # We already found this file at the beginning so we just set and move on
         else:
-            if not os.path.exists(path.replace(current_type, expected_type)):  # Confirm the additional log file exists
+            if not os.path.exists(validate_path):  # Confirm the additional log file exists
                 logging.error(('File {0} not found adjacent to selected file as expected. ' +
-                               'Closing.').format(os.path.exists(path.replace(current_type, expected_type))))
+                               'Closing.').format(os.path.exists(validate_path)))
                 exit()
             else:  # If the log exists, add it to the unity files
-                unity_files_dict[expected_type] = path.replace(current_type, expected_type)
+                unity_files_dict[expected_type] = validate_path
     unity_files.append(unity_files_dict)
 
 participant_ids = []
