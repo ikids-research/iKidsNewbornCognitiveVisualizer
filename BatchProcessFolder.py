@@ -49,7 +49,7 @@ paths = []
 for root, dirs, files in os.walk(directory):
     for f in files:
         if f.startswith(unity_file_key_string + 'config'):
-            paths.append(f)
+            paths.append(os.path.join(root, f))
 
 logging.info("Directory {0} selected.".format(directory))
 
@@ -60,8 +60,9 @@ unity_files = []  # Dictionary to store the log file names
 for path in paths:
     unity_files_dict = dict()
     current_type = os.path.basename(path)[len(unity_file_key_string):].split('_')[0]  # Identify the selected file type
+    base_directory = os.path.dirname(path)
     for expected_type in unity_file_types:  # Search local directory for correct log files and generate list
-        validate_path = os.path.join(directory, path.replace(current_type, expected_type))
+        validate_path = os.path.join(base_directory, path.replace(current_type, expected_type))
         if expected_type == current_type:
             unity_files_dict[expected_type] = validate_path
             continue  # We already found this file at the beginning so we just set and move on

@@ -245,9 +245,15 @@ def parse_unity_log_files(input_filename,
             found_value = [sx for sx in val if substr in sx][0].split(':')[1].strip()
         except IndexError:
             return -1
+        found_value = found_value.replace('*EOF*', ',')  # Occasionally *EOF* can slip through on TCP.
+        # This is a bug, but this is a simple fix until the bug is found.
         if ',' in found_value:
             found_value = found_value.split(',')[0]
-        return reference[lookup.index(found_value)]
+        try:
+            output_val = reference[lookup.index(found_value)]
+        except ValueError:
+            output_val = ''
+        return output_val
 
     si = states_and_inputs.values()[0]
     si_key = states_and_inputs.keys()[0]
