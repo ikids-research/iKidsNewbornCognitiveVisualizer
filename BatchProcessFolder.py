@@ -3,7 +3,7 @@ import datetime
 import os
 import tkFileDialog
 
-from iKidsParser import parse_unity_log_files, phase_key_numbered
+from iKidsParser import parse_unity_log_files, phase_key_numbered, phase_numbers_numbered
 
 try:
     import tkinter as tk
@@ -90,13 +90,14 @@ for sample in unity_files:
 def make_output_line(data_sample):
     p = data_sample.participant_id
     c = data_sample.condition
-    keys = phase_key_numbered
+    keys = [val for sublist in phase_numbers_numbered for val in sublist]
+    keys.sort()
     phases = dict()
     for k in keys:
         phases[k] = [0, 0, 0]
 
     for idx, (x, state, label) in enumerate(zip(data_sample.x_human, data_sample.y_human,
-                                                data_sample.abstract_phases_numbered)):
+                                                data_sample.y_phase)):
         if label in keys:
             try:
                 t = (data_sample.x_human[idx + 1] - x)
@@ -124,10 +125,12 @@ def make_output_line(data_sample):
 output_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%p.csv"))
 phase_key_numbered_expanded = []
-for key in phase_key_numbered:
-    phase_key_numbered_expanded.append(key + '_left')
-    phase_key_numbered_expanded.append(key + '_right')
-    phase_key_numbered_expanded.append(key + '_total')
+phase_numbers = [val for sublist in phase_numbers_numbered for val in sublist]
+phase_numbers.sort()
+for key in phase_numbers:
+    phase_key_numbered_expanded.append(str(key) + '_left')
+    phase_key_numbered_expanded.append(str(key) + '_right')
+    phase_key_numbered_expanded.append(str(key) + '_total')
 f = open(output_filename, 'wb')
 header = 'Participant ID,Condition,' + ','.join(phase_key_numbered_expanded)
 f.write(header + '\n')
