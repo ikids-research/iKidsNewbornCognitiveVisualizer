@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import logging
 
 import numpy as np
 
@@ -333,20 +334,46 @@ def parse_unity_log_files(input_filename,
         remove_start_point=(latency_mode == 'all' or latency_mode == 'first'),
         remove_end_point=(latency_mode == 'all' or latency_mode == 'second'))
 
+    flattened_phase_numbers = [item for sublist in phase_numbers for item in sublist]
+
     x_interval_sum = 0
     sample_count = 0
     sample_wise_agreement_sum = 0.0
     time_wise_agreement_sum = 0
+    time_wise_agreement_sum_by_phase = dict()
+    time_wise_total_by_phase = dict()
+    time_wise_agreement_by_phase = dict()
+    for i in range(min(flattened_phase_numbers), max(flattened_phase_numbers)+1):
+        time_wise_agreement_sum_by_phase[i] = 0
+        time_wise_total_by_phase[i] = 0
+        time_wise_agreement_by_phase[i] = 0
+
     # Use the mask to compute the running average, sample-wise agreement percentage, and time-wise agreement percentage
     for idx, mask_val in enumerate(agreement_latency_mask):
         if mask_val:
             if not (idx >= len(x_agreement) - 1):
+                phase = y_phase[idx]
                 delta_t = x_agreement[idx + 1] - x_agreement[idx]
                 x_interval_sum += delta_t
-                time_wise_agreement_sum += y_agreement[idx] * delta_t
+                interval = y_agreement[idx] * delta_t
+                time_wise_agreement_sum += interval
+                if phase == -1:
+                    logging.warning('Phase value not found for agreement value. (len(phase)={0}, len(agreement)={1}'
+                                    .format(len(y_phase), len(x_agreement)))
+                else:
+                    time_wise_agreement_sum_by_phase[phase] += interval
+                    time_wise_total_by_phase[phase] += delta_t
             else:  # We interpolate the final point delta-t by assuming it is the average
+                phase = y_phase[idx-1]
                 delta_t = x_interval_sum / sample_count
-                time_wise_agreement_sum += y_agreement[idx] * delta_t
+                interval = y_agreement[idx] * delta_t
+                time_wise_agreement_sum += interval
+                if phase == -1:
+                    logging.warning('Phase value not found for agreement value. (len(phase)={0}, len(agreement)={1}'
+                                    .format(len(y_phase), len(x_agreement)))
+                else:
+                    time_wise_agreement_sum_by_phase[phase] += interval
+                    time_wise_total_by_phase[phase] += delta_t
                 x_interval_sum += delta_t
             sample_count += 1
             sample_wise_agreement_sum += float(y_agreement[idx])
@@ -357,6 +384,11 @@ def parse_unity_log_files(input_filename,
             y_agree_running_proportion.append(np.average(agree_list))
     sample_wise_agreement = sample_wise_agreement_sum / sample_count
     time_wise_agreement = time_wise_agreement_sum / x_interval_sum
+    for i in range(min(flattened_phase_numbers), max(flattened_phase_numbers)):
+        if time_wise_total_by_phase[i] == 0:
+            time_wise_agreement_by_phase[i] = -1
+        else:
+            time_wise_agreement_by_phase[i] = time_wise_agreement_sum_by_phase[i]/time_wise_total_by_phase[i]
 
     abstract_phases = [None] * len(x_phase)
     abstract_phases_numbered = [None] * len(x_phase)
@@ -406,5 +438,8 @@ def parse_unity_log_files(input_filename,
     data.abstract_phase_keys = phase_key
     data.participant_id = participant_id.strip()
     data.condition = condition.strip()
+    data.time_wise_agreement_by_phase = time_wise_agreement_by_phase
+    data.time_wise_agreement_sum_by_phase = time_wise_agreement_sum_by_phase
+    data.time_wise_total_by_phase = time_wise_total_by_phase
 
     return data

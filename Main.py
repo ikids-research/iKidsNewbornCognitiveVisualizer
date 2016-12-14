@@ -98,7 +98,7 @@ if mode == 'xlsx':
                                                  minimum_latency=args.min_latency,
                                                  latency_mode=args.latency_mode)
 elif mode == 'unity':
-    participant_id = unity_files['input'].split('log-')[1]  # Participant ID is date-part
+    participant_id = unity_files['input'].split('log-')[-1]  # Participant ID is date-part
     data = parse_unity_log_files(unity_files['input'], unity_files['state'], unity_files['config'],
                                  moving_average_window_size=args.avg_size,
                                  minimum_latency=args.min_latency,

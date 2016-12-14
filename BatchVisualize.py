@@ -5,6 +5,8 @@ import tkFileDialog
 
 from iKidsParser import parse_unity_log_files, phase_key_numbered, phase_numbers_numbered
 
+from subprocess import call
+
 try:
     import tkinter as tk
 except ImportError:
@@ -75,75 +77,7 @@ for path in paths:
                 unity_files_dict[expected_type] = validate_path
     unity_files.append(unity_files_dict)
 
-logging.info('Parsing files...')
-participant_ids = []
-data = []
-for idx, sample in enumerate(unity_files):
-    # noinspection PyTypeChecker
-    participant_ids.append(sample['input'].split('log-')[1])  # Participant ID is date-part
-    # noinspection PyTypeChecker
-    data.append(parse_unity_log_files(sample['input'], sample['state'], sample['config'],
-                                      moving_average_window_size=args.avg_size,
-                                      minimum_latency=args.min_latency,
-                                      latency_mode=args.latency_mode))
-    logging.info('Finished file {0} of {1}.'.format(idx, len(unity_files)))
-
-logging.info('Finished parsing.')
-
-
-def make_output_line(data_sample):
-    p = data_sample.participant_id
-    c = data_sample.condition
-    keys = [val for sublist in phase_numbers_numbered for val in sublist]
-    keys.sort()
-    phases = dict()
-    for k in keys:
-        phases[k] = [0, 0, 0]
-
-    for idx, (x, state, label) in enumerate(zip(data_sample.x_human, data_sample.y_human,
-                                                data_sample.y_phase)):
-        if label in keys:
-            try:
-                t = (data_sample.x_human[idx + 1] - x)
-            except IndexError:
-                t = 0
-            if state == 'left':
-                phases[label][0] += t
-                phases[label][2] += t
-            elif state == 'right':
-                phases[label][1] += t
-                phases[label][2] += t
-
-    states = []
-    for phase in phases:
-        value = phases[phase]
-        states.append(str(value[0]))
-        states.append(str(value[1]))
-        states.append(str(value[2]))
-        states.append(str(data_sample.time_wise_agreement_by_phase[phase]))
-
-    return_val = [p, c, str(data_sample.time_wise_agreement)]
-    return_val.extend(states)
-    return return_val
-
-logging.info('Generating output file.')
-
-output_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                               datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%p.csv"))
-phase_key_numbered_expanded = []
-phase_numbers = [val for sublist in phase_numbers_numbered for val in sublist]
-phase_numbers.sort()
-for key in phase_numbers:
-    phase_key_numbered_expanded.append(str(key) + '_left')
-    phase_key_numbered_expanded.append(str(key) + '_right')
-    phase_key_numbered_expanded.append(str(key) + '_total')
-    phase_key_numbered_expanded.append(str(key) + '_agreement')
-f = open(output_filename, 'wb')
-header = 'Participant ID,Condition,Total Agreement,' + ','.join(phase_key_numbered_expanded)
-f.write(header + '\n')
-logging.info('Writing output lines...')
-for d in data:
-    output = make_output_line(d)
-    f.write(','.join(output) + '\n')
-
-logging.info('Done.')
+for file_group in unity_files:
+    command = "python \""+os.path.join(os.path.dirname(__file__), "Main.py")+\
+              "\" -auto_open false -i \""+file_group['config']+"\""
+    call(command)
