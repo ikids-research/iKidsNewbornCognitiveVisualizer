@@ -188,7 +188,8 @@ def parse_unity_log_files(input_filename,
                           config_filename,
                           moving_average_window_size=100,
                           minimum_latency=0.1,
-                          latency_mode='all'):
+                          latency_mode='all',
+                          fill_holes=False):
     fi = open(input_filename, 'rb')
     fs = open(state_filename, 'rb')
     fc = open(config_filename, 'rb')
@@ -236,7 +237,7 @@ def parse_unity_log_files(input_filename,
     # Confirm that the raw data is sorted by time (should be anyway, but it's good to confirm)
     states_and_inputs = OrderedDict(sorted(states_and_inputs.iteritems(), key=lambda x: x[0]))
 
-    state_reference = ['down', 'up', 'left', 'right', 'off']
+    state_reference = ['down', 'up', 'left', 'right', 'none']
     tcp_state_lookup = ['d', 'c', 'l', 'r', '']
     keyboard_state_lookup = ['down', 'up', 'left', 'right', '']
 
@@ -290,6 +291,8 @@ def parse_unity_log_files(input_filename,
         if val_human == -1:
             val_human = y_human[-1]
         val_computer = find_subval_in_val(input_list, 'TCP Commands', tcp_state_lookup, state_reference)
+        if fill_holes and (val_computer == "none"):
+            val_computer = y_computer[-1]
         if val_computer == -1:
             val_computer = y_computer[-1]
         if val_computer == 'off':

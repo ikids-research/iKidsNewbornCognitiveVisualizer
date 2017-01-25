@@ -40,6 +40,8 @@ parser.add_argument("-latency_mode", help="Latency mode can be all, first, or se
                     "(all), the first point around the interval is ignored (first), or the second point around the "
                     "interval is ignored (second). (default=all)", default="all", dest="latency_mode",
                     choices=['all', 'first', 'second'])
+parser.add_argument("-fill_holes", help="If true, empty values from the computer will be replaced with the last known value.",
+                    default=True)
 args = parser.parse_args()
 
 auto_open = False
@@ -102,7 +104,7 @@ elif mode == 'unity':
     data = parse_unity_log_files(unity_files['input'], unity_files['state'], unity_files['config'],
                                  moving_average_window_size=args.avg_size,
                                  minimum_latency=args.min_latency,
-                                 latency_mode=args.latency_mode)
+                                 latency_mode=args.latency_mode, fill_holes=args.fill_holes)
 
 if participant_id is None or data is None:
     logging.error("There was a problem in parsing. No data or participant_id found. Closing.")
