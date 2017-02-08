@@ -85,7 +85,8 @@ for idx, sample in enumerate(unity_files):
     data.append(parse_unity_log_files(sample['input'], sample['state'], sample['config'],
                                       moving_average_window_size=args.avg_size,
                                       minimum_latency=args.min_latency,
-                                      latency_mode=args.latency_mode))
+                                      latency_mode=args.latency_mode,
+                                      fill_holes=True))
     logging.info('Finished file {0} of {1}.'.format(idx, len(unity_files)))
 
 logging.info('Finished parsing.')
