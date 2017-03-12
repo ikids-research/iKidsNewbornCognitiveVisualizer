@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import logging
-
+from collections import deque
 import numpy as np
 
 
@@ -189,7 +189,9 @@ def parse_unity_log_files(input_filename,
                           moving_average_window_size=100,
                           minimum_latency=0.1,
                           latency_mode='all',
-                          fill_holes=False):
+                          fill_holes=False,
+                          filter_window_size=10):
+    logging.info('filter_window_size={0}'.format(filter_window_size))
     fi = open(input_filename, 'rb')
     fs = open(state_filename, 'rb')
     fc = open(config_filename, 'rb')
@@ -280,6 +282,8 @@ def parse_unity_log_files(input_filename,
     agree_list.append(val_agreement)
     y_agree_running_proportion.append(np.average(agree_list))
 
+    window = deque()
+
     iter_si = iter(states_and_inputs)
     next(iter_si)
     for si_key in iter_si:
@@ -291,12 +295,22 @@ def parse_unity_log_files(input_filename,
         if val_human == -1:
             val_human = y_human[-1]
         val_computer = find_subval_in_val(input_list, 'TCP Commands', tcp_state_lookup, state_reference)
+
         if fill_holes and (val_computer == "none"):
             val_computer = y_computer[-1]
         if val_computer == -1:
             val_computer = y_computer[-1]
         if val_computer == 'off':
             val_computer = y_computer[-1]
+
+        if filter_window_size is not None:
+            window.append(val_computer)
+            if len(window) > filter_window_size:
+                window.popleft()
+            counts = []
+            for uy in state_reference:
+                counts.append(window.count(uy))
+
         try:
             phase = int([s for s in state_list if 'Current Task Index' in s][0].split(':')[1].strip())
         except IndexError:

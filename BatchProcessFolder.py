@@ -31,6 +31,10 @@ parser.add_argument("-latency_mode", help="Latency mode can be all, first, or se
                                           "interval is ignored (second). (default=all)", default="all",
                     dest="latency_mode",
                     choices=['all', 'first', 'second'])
+parser.add_argument("-fill_holes", help="If true, empty values from the computer will be replaced with the last known value.",
+                    default=True)
+parser.add_argument("-filter_window_size", default=10, dest='filter_window_size',
+                    help="the window size for causal filtering by maximum voting (default is 10 samples)")
 args = parser.parse_args()
 
 # Get the path from the argument or a dialog if no argument is provided
@@ -86,7 +90,7 @@ for idx, sample in enumerate(unity_files):
                                       moving_average_window_size=args.avg_size,
                                       minimum_latency=args.min_latency,
                                       latency_mode=args.latency_mode,
-                                      fill_holes=True))
+                                      fill_holes=args.fill_holes, filter_window_size=args.filter_window_size))
     logging.info('Finished file {0} of {1}.'.format(idx, len(unity_files)))
 
 logging.info('Finished parsing.')
