@@ -2,6 +2,7 @@ from collections import OrderedDict
 import logging
 from collections import deque
 import numpy as np
+import sklearn.metrics as metrics
 
 
 def list_mask_by_latency(t, latency=0.1, remove_start_point=True, remove_end_point=False):
@@ -432,7 +433,6 @@ def parse_unity_log_files(input_filename,
             condition = line.split('Condition Configuration Filename: ')[-1]
 
     # End Parser
-
     # Fill object with parser results and return
     data = type("iKidsDataObject", (object,), {})()
     data.x_human = x_human
@@ -440,6 +440,8 @@ def parse_unity_log_files(input_filename,
     data.x_agreement = x_agreement
     data.y_human = y_human
     data.y_computer = y_computer
+    data.confusion_matrix = metrics.confusion_matrix(y_human, y_computer)
+    data.confusion_matrix_labels = sorted(list(set(y_human+y_computer)))
     data.y_agreement = y_agreement
     data.x_phase = x_phase
     data.y_phase = y_phase

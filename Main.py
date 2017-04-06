@@ -13,6 +13,8 @@ try:
 except ImportError:
     import Tkinter as tk
 import logging
+from confusion_matrix import get_confusion_matrix
+
 
 # Initialize the logger
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
@@ -268,4 +270,16 @@ fig.append_trace(trace_latency, 6, 1)
 fig.append_trace(trace_latency_threshold, 6, 1)
 
 # Render plot
-offline.plot(fig, filename=participant_id + '.html', auto_open=auto_open)
+offline.plot(fig, filename=participant_id + '.html', auto_open=False)
+
+# Append confusion matrix
+get_confusion_matrix(participant_id + '_confusion_matrix.png', data.confusion_matrix, data.confusion_matrix_labels)
+data_uri = open(participant_id + '_confusion_matrix.png', 'rb').read().encode('base64').replace('\n', '')
+img_tag = '<img src="data:image/png;base64,%s">' % data_uri
+os.remove(participant_id + '_confusion_matrix.png')
+
+with open(participant_id + '.html', "a") as f:
+    f.seek(-14, 2)
+    f.write(img_tag)
+
+os.system("start "+participant_id + '.html')
