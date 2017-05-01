@@ -12,6 +12,7 @@
       <option name="ignoredIdentifiers">
         <list>
           <option value="plotly.graph_objs.*" />
+          <option value="cv2.CAP_PROP_FPS" />
         </list>
       </option>
     </inspection_tool>
