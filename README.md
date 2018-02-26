@@ -1,10 +1,10 @@
-#Easy Setup (Windows Only)
+# Easy Setup (Windows Only)
 
 1. Run Setup.bat
 2. Unzip iKidsNewbornCognitiveVisualizerData.zip (or have log files you wish to visualize in a known location)
 3. Run Run.bat (and select a log file)
 
-#Setup
+# Setup
 
 To use this program, the following software should be installed. This has only been tested on Windows 10, but other version of Windows should work (and perhaps other OSes as nothing is particularly OS specific).
 
