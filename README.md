@@ -15,3 +15,14 @@ To use this program, the following software should be installed. This has only b
 
 3. (optional) Install PyCharm Community Edition from https://www.jetbrains.com/pycharm/download/
 4. Download this repo as zip (https://github.com/kevroy314/iKidsNewbornCognitiveVisualizer/archive/master.zip) and unzip in a known location or call git clone
+
+# Script Files
+
+* **Main.py** - Performs the primary visualization on a specific file.
+* **BatchVisualize.py** - Calls Main.py on all files in a specified folder.
+* **BatchProcessFolder.py** - Parses a folder of Unity log files and produces an output CSV.
+* **VideoLogger.py** - Allows for the manual labeling of a video.
+
+# Usage
+
+Verious processes/functions can be run conveniently by running the various .bat Batch Files. Otherwise, scripts can be run using the 'python' command from the command line. Most scripts also have argparse command-line arguments to modify its function. These will appear automatically when the function is called with only the -h argument.
