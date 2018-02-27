@@ -241,7 +241,7 @@ def parse_unity_log_files(input_filename,
     states_and_inputs = OrderedDict(sorted(states_and_inputs.iteritems(), key=lambda x: x[0]))
 
     state_reference = ['down', 'up', 'left', 'right', 'none']
-    tcp_state_lookup = ['d', 'c', 'l', 'r', '']
+    tcp_state_lookup = ['d', 'c', 'r', 'l', '']
     keyboard_state_lookup = ['down', 'up', 'left', 'right', '']
 
     # TODO: This assumes there is one value at a time - not always true (for instance, if two buttons are pressed)
